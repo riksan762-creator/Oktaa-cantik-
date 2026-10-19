@@ -185,7 +185,7 @@ input::placeholder{color:#b9a7ae;letter-spacing:.02em}
 <script>
 /* =====================  EDIT BAGIAN INI SAJA  =====================
    Foto : 1.jpg … 5.jpg (nama jpg.1 … jpg.5 juga dikenali), satu folder dengan file ini
-   Lagu : simpan file lagunya dengan nama  lagu.mp3  di folder yang sama           */
+   Lagu : nama file lagu harus sama persis dengan yang ada di GitHub          */
 const CONFIG = {
   name: 'Oktaa',
   from: 'Risen',
@@ -207,7 +207,7 @@ Terima kasih sudah tertawa bersamaku, sudah sabar saat aku belum sempurna, dan s
 Semoga tahun ini memelukmu dengan hal-hal baik, kesehatan, dan semua doa yang diam-diam kamu simpan. Di setiap langkahnya, izinkan aku jadi orang yang menggenggam tanganmu.
 
 Aku sayang kamu, hari ini dan seterusnya.`,
-  songs: ['lagu.mp3','Selamat Ulang Tahun [Jamrud] (1).mp3','Selamat Ulang Tahun [Jamrud].mp3','Lagu.mp3','lagu.MP3','lagu.m4a','lagu.ogg','lagu.wav','jamrud.mp3']
+  songs: ['Selamat Ulang Tahun [Jamrud] (1).mp3']
 };
 /* ================================================================ */
 
@@ -305,7 +305,7 @@ function playSong(){
   const tryNext = () => {
     if(audio !== a) return;
     if(songI >= CONFIG.songs.length){
-      toast('Lagu gagal dimuat. Pastikan file lagu.mp3 adalah MP3 asli dan ada di folder yang sama.');
+      toast('Lagu gagal dimuat. Pastikan nama file lagu sama persis dengan yang ada di GitHub.');
       return;
     }
     a.src = encodeURI(CONFIG.songs[songI++]) + '?v=' + Date.now();
@@ -329,6 +329,7 @@ function tryOpen(){
   if(v === norm(CONFIG.password)){
     $('vault').classList.add('opened'); $('msg').textContent = 'Terbuka. Selamat datang, cantik.';
     $('balloons').classList.add('lift'); burst(innerWidth/2, innerHeight*.4, 80);
+    playSong();
     setTimeout(()=>{ $('balloons').classList.remove('lift'); show('hello'); }, 1500);
   } else {
     $('msg').textContent = 'Belum tepat, cantik. Lihat petunjuk di bawah ya.';
@@ -349,43 +350,61 @@ function renderMem(){
 }
 $('go').onclick = () => { m = 0; show('mem'); renderMem(); };
 $('prev').onclick = () => { if(m>0){ m--; renderMem(); } };
-$('next').onclick = () => { if(m < CONFIG.memories.length-1){ m++; renderMem(); } else finale(); };
+$('next').onclick = () => {
+  if(m < CONFIG.memories.length-1){ m++; renderMem(); }
+  else { showFinal(); }
+};
 
-/* kartu foto miring 3D mengikuti jari/kursor */
+/* ---- kartu foto miring 3D saat disentuh ---- */
 const card = $('card');
 card.addEventListener('pointermove', e => {
   const r = card.getBoundingClientRect();
-  card.style.setProperty('--ry', ((e.clientX-r.left)/r.width-.5)*14+'deg');
-  card.style.setProperty('--rx', (-((e.clientY-r.top)/r.height-.5))*14+'deg');
+  const px = (e.clientX - r.left)/r.width - .5, py = (e.clientY - r.top)/r.height - .5;
+  card.style.setProperty('--ry', (px*14)+'deg');
+  card.style.setProperty('--rx', (-py*14)+'deg');
 });
-['pointerleave','pointerup'].forEach(ev => card.addEventListener(ev, () => { card.style.setProperty('--rx','0deg'); card.style.setProperty('--ry','0deg'); }));
+['pointerleave','pointerup','pointercancel'].forEach(ev => card.addEventListener(ev, () => {
+  card.style.setProperty('--rx','0deg'); card.style.setProperty('--ry','0deg');
+}));
 
-let typing;
-function finale(){
-  show('final'); playSong();
-  const g = $('gallery'); g.innerHTML = ''; const rot = [-3,2.5,2,-2.5,-1];
-  for(let i=1;i<=5;i++){
-    const d = document.createElement('div'); d.className='pol'; d.style.setProperty('--r',rot[i-1]+'deg');
-    const box = document.createElement('div'); box.className='thumb'; box.appendChild(makeImg(i));
-    d.appendChild(box); g.appendChild(d);
+/* ---- halaman akhir ---- */
+let typer;
+function typeLetter(){
+  clearInterval(typer);
+  const el = $('letter'), text = CONFIG.letter; let i = 0;
+  el.textContent = ''; $('sign').textContent = '';
+  typer = setInterval(()=>{
+    i++; el.textContent = text.slice(0,i);
+    if(i >= text.length){ clearInterval(typer); $('sign').textContent = '— ' + CONFIG.from; }
+  }, 32);
+}
+$('letter').parentElement.addEventListener('click', () => {
+  clearInterval(typer);
+  $('letter').textContent = CONFIG.letter; $('sign').textContent = '— ' + CONFIG.from;
+});
+function buildGallery(){
+  const g = $('gallery'); g.innerHTML = '';
+  const rot = [-4,3,3,-3,-1.5];
+  for(let n=1;n<=5;n++){
+    const pol = document.createElement('div'); pol.className = 'pol';
+    pol.style.setProperty('--r', rot[n-1]+'deg');
+    const th = document.createElement('div'); th.className = 'thumb';
+    th.appendChild(makeImg(n)); pol.appendChild(th); g.appendChild(pol);
   }
-  $('sign').textContent = '— ' + CONFIG.from;
-  const t = CONFIG.letter, el = $('letter'); el.textContent = ''; let i = 0; clearInterval(typing);
-  typing = setInterval(()=>{ el.textContent += t[i++]; if(i>=t.length) clearInterval(typing); }, 36);
-  el.onclick = () => { clearInterval(typing); el.textContent = t; };
-  $('cake').textContent = '🎂'; $('cake').classList.remove('out');
-  $('wish').textContent = 'Ketuk kuenya, tiup lilin, lalu buat satu permintaan.';
-  setTimeout(()=>burst(), 600);
+}
+function showFinal(){
+  show('final'); buildGallery(); typeLetter();
+  $('cake').classList.remove('out');
+  $('wish').textContent = 'Ketuk kuenya untuk meniup lilin.';
+  burst(innerWidth/2, innerHeight*.35, 120);
 }
 $('cake').onclick = () => {
   if($('cake').classList.contains('out')) return;
-  $('cake').classList.add('out'); burst();
-  $('wish').textContent = 'Semoga semua permintaanmu terkabul, ' + CONFIG.name + ' 🤍';
+  $('cake').classList.add('out');
+  $('wish').textContent = 'Semoga semua doamu terkabul, ' + CONFIG.name + '.';
+  burst(innerWidth/2, innerHeight*.6, 160);
 };
-$('again').onclick = () => {
-  clearInterval(typing); if(audio){ audio.pause(); audio = null; } $('mute').style.display='none';
-  $('vault').classList.remove('opened'); $('pw').value=''; $('msg').textContent=''; show('lock');
-};
+$('again').onclick = () => { clearInterval(typer); m = 0; show('hello'); };
 </script>
 </body>
 </html>
