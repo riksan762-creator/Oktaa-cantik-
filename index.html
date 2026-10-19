@@ -207,7 +207,7 @@ Terima kasih sudah tertawa bersamaku, sudah sabar saat aku belum sempurna, dan s
 Semoga tahun ini memelukmu dengan hal-hal baik, kesehatan, dan semua doa yang diam-diam kamu simpan. Di setiap langkahnya, izinkan aku jadi orang yang menggenggam tanganmu.
 
 Aku sayang kamu, hari ini dan seterusnya.`,
-  songs: ['lagu.mp3','jamrud.mp3','Jamrud - Selamat Ulang Tahun.mp3']
+  songs: ['lagu.mp3','Lagu.mp3','lagu.MP3','lagu.m4a','lagu.ogg','lagu.wav','jamrud.mp3']
 };
 /* ================================================================ */
 
@@ -286,15 +286,34 @@ BALS.forEach(b=>{
 let audio, songI = 0, muted = false;
 function toast(t){ const e=$('toast'); e.textContent=t; e.style.display='block'; setTimeout(()=>e.style.display='none',4500); }
 function playSong(){
-  audio = new Audio(); audio.loop = true; audio.volume = 0; audio.src = CONFIG.songs[songI];
-  audio.onerror = () => {
-    if(++songI < CONFIG.songs.length){ audio.src = CONFIG.songs[songI]; audio.play().catch(()=>{}); }
-    else toast('File lagu belum ketemu. Simpan sebagai lagu.mp3 di folder yang sama.');
+  if(audio){ audio.pause(); }
+  songI = 0;
+  const a = audio = new Audio(); a.loop = true; a.preload = 'auto'; a.volume = 0;
+  const started = () => {
+    $('mute').style.display = 'block';
+    let v = 0;
+    const f = setInterval(()=>{
+      if(audio !== a){ clearInterval(f); return; }
+      v = Math.min(.85, v+.03); if(!muted) a.volume = v; if(v >= .85) clearInterval(f);
+    }, 140);
   };
-  audio.play().then(()=>{
-    $('mute').style.display='block';
-    let v = 0; const f = setInterval(()=>{ v = Math.min(.85, v+.03); if(!muted) audio.volume = v; if(v>=.85) clearInterval(f); }, 140);
-  }).catch(()=>{});
+  const needTap = () => {
+    toast('Ketuk layar sekali untuk memutar lagu.');
+    const once = () => { document.removeEventListener('click', once); if(audio === a) a.play().then(started).catch(()=>{}); };
+    document.addEventListener('click', once);
+  };
+  const tryNext = () => {
+    if(audio !== a) return;
+    if(songI >= CONFIG.songs.length){
+      toast('Lagu gagal dimuat. Pastikan file lagu.mp3 adalah MP3 asli dan ada di folder yang sama.');
+      return;
+    }
+    a.src = encodeURI(CONFIG.songs[songI++]) + '?v=' + Date.now();
+    a.load();
+    a.play().then(started).catch(err => { if(err && err.name === 'NotAllowedError') needTap(); });
+  };
+  a.onerror = tryNext;
+  tryNext();
 }
 $('mute').onclick = () => {
   if(!audio) return; muted = !muted; audio.volume = muted ? 0 : .85; $('mute').textContent = muted ? '🔇' : '🔊';
